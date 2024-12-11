@@ -165,10 +165,5 @@ def prepare_data(data_dir = data_dir):
     )
     train_data, val_data, test_data = transform(data)
 
-    # Move data to the appropriate device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_data = train_data.to(device)
-    val_data = val_data.to(device)
-    test_data = test_data.to(device)
 
     return train_data, val_data, test_data
