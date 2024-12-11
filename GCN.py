@@ -11,28 +11,29 @@ from utils import visualize_graph
 from create_dataset import prepare_data
 
 class GCNEncoder(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, dropout = 0.5):
+    def __init__(self, in_channels, hidden_channels, out_channels, dropout = 0.5, num_layers=2):
         super(GCNEncoder, self).__init__()
-        self.conv1 = GCNConv(in_channels, 2 * out_channels)
-        self.norm1 = BatchNorm(2 * out_channels)
-        self.conv2 = GCNConv(2 * out_channels, out_channels)
-        self.norm2 = BatchNorm(out_channels)
+        self.layers = nn.ModuleList()
+        self.layers.append(GCNConv(in_channels, hidden_channels))
+        for _ in range(num_layers - 2):
+            self.layers.append(GCNConv(hidden_channels, hidden_channels))
+        self.layers.append(GCNConv(hidden_channels, out_channels))
+        self.norms = torch.nn.ModuleList([BatchNorm(hidden_channels) for _ in range(num_layers)])
         self.dropout = dropout
 
     def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
-        x = self.norm1(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.conv2(x, edge_index)
-        x = self.norm2(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
+        for i, layer in enumerate(self.layers[:-1]):
+            x = layer(x, edge_index)
+            x = self.norms[i](x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.layers[-1](x, edge_index)
         return x
 
 class Net(torch.nn.Module):
     def __init__(self, in_channels, out_channels, dropout=0.5):
         super(Net, self).__init__()
-        self.encoder = GCNEncoder(in_channels, out_channels, dropout)
+        self.encoder = GCNEncoder(in_channels, out_channels, out_channels, dropout)
 
     def forward(self, x, edge_index):
         z = self.encoder(x, edge_index)
@@ -43,7 +44,7 @@ class Net(torch.nn.Module):
         return (z[edge_index[0]] * z[edge_index[1]]).sum(dim=1)
 
 # Training and evaluation functions
-def train(model, optimizer, train_data):
+def train(model, optimizer, train_data, scheduler=None):
     model.train()
     optimizer.zero_grad()
     z = model(train_data.x, train_data.edge_index)
@@ -56,6 +57,8 @@ def train(model, optimizer, train_data):
     loss.backward()
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
     optimizer.step()
+    if scheduler is not None:
+        scheduler.step(loss)
     return loss.item()
 
 def test(model, data):
@@ -80,7 +83,10 @@ train_data, val_data, test_data = prepare_data(data_dir)
 
 # Initialize the model, optimizer
 model = Net(in_channels=train_data.num_features, out_channels=128, dropout=0.5).to(train_data.x.device)
-optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
+# optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
+
 
 # # Training loop
 # num_epochs = 3000
@@ -110,9 +116,9 @@ val_mse_history = []
 test_mse_history = []
 
 # Example training loop to populate these lists
-num_epochs = 500
+num_epochs = 300
 for epoch in range(1, num_epochs + 1):
-    loss = train(model, optimizer, train_data)
+    loss = train(model, optimizer, train_data, scheduler)
     train_loss_history.append(loss)
     
     if epoch % 10 == 0:  # Assuming you want to evaluate every 10 epochs
@@ -145,15 +151,15 @@ plt.title('Validation and Test MSE over Epochs')
 plt.legend()
 plt.show()
 
-import pickle
+# import pickle
 
-# Save the trained model
-torch.save(model.state_dict(), 'best_model.pth')
+# # Save the trained model
+# torch.save(model.state_dict(), 'best_model.pth')
 
-# Save the mappings and node features
-with open('data_mappings.pkl', 'wb') as f:
-    pickle.dump({
-        'player_to_node': player_to_node,
-        'slug_to_name': slug_to_name,
-        'node_features': node_features,
-    }, f)
+# # Save the mappings and node features
+# with open('data_mappings.pkl', 'wb') as f:
+#     pickle.dump({
+#         'player_to_node': player_to_node,
+#         'slug_to_name': slug_to_name,
+#         'node_features': node_features,
+#     }, f)
