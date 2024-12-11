@@ -12,7 +12,6 @@ from utils import visualize_graph
 # Directory containing the JSON files     
 data_dir = './player_season_jsons/'  # Adjust the path accordingly
 
-
 # Function to prepare data
 def prepare_data(data_dir):
     # List of seasons
