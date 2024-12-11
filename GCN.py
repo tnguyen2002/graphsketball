@@ -8,6 +8,7 @@ from torch_geometric.nn import GCNConv, BatchNorm, LayerNorm
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score, average_precision_score
 from utils import visualize_graph
+from create_dataset import prepare_data
 
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels, dropout = 0.5):
@@ -73,8 +74,12 @@ def test(model, data):
 
     return mse.item()
 
+data_dir = 'data/player_season_jsons/'  # Adjust the path accordingly
+
+train_data, val_data, test_data = prepare_data(data_dir)
+
 # Initialize the model, optimizer
-model = Net(in_channels=data.num_features, out_channels=128, dropout=0.5).to(device)
+model = Net(in_channels=train_data.num_features, out_channels=128, dropout=0.5).to(train_data.x.device)
 optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
 
 # # Training loop

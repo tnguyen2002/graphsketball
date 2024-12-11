@@ -10,10 +10,10 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from utils import visualize_graph
 
 # Directory containing the JSON files     
-data_dir = './player_season_jsons/'  # Adjust the path accordingly
+data_dir = 'data/player_season_jsons/'  # Adjust the path accordingly
 
 # Function to prepare data
-def prepare_data(data_dir):
+def prepare_data(data_dir = data_dir):
     # List of seasons
     seasons = [
         '2012_2013', '2013_2014', '2014_2015', '2015_2016',
