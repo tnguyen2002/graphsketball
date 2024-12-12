@@ -7,11 +7,10 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.nn import GCNConv, BatchNorm, LayerNorm
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score, average_precision_score
-from utils import visualize_graph
-from create_dataset import prepare_data
+from utils import visualize_graph, get_data
 
 class GCNEncoder(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, dropout = 0.5, num_layers=2):
+    def __init__(self, in_channels, hidden_channels, out_channels, dropout = 0.5, num_layers=1):
         super(GCNEncoder, self).__init__()
         self.layers = nn.ModuleList()
         self.layers.append(GCNConv(in_channels, hidden_channels))
@@ -79,13 +78,13 @@ def test(model, data):
 
 data_dir = 'data/player_season_jsons/'  # Adjust the path accordingly
 
-train_data, val_data, test_data = prepare_data(data_dir)
+train_data, val_data, test_data = get_data()
 
 # Initialize the model, optimizer
 model = Net(in_channels=train_data.num_features, out_channels=128, dropout=0.5).to(train_data.x.device)
 # optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
 optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.75, patience=5)
 
 
 # # Training loop

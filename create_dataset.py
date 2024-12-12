@@ -13,7 +13,7 @@ from utils import visualize_graph
 data_dir = 'data/player_season_jsons/'  # Adjust the path accordingly
 
 # Function to prepare data
-def prepare_data(data_dir = data_dir):
+def prepare_data(data_dir = data_dir, save_data=False):
     # List of seasons
     seasons = [
         '2012_2013', '2013_2014', '2014_2015', '2015_2016',
@@ -44,6 +44,42 @@ def prepare_data(data_dir = data_dir):
     # Create a mapping from position to index
     position_to_idx = {pos: idx for idx, pos in enumerate(sorted(positions_set))}
     num_positions = len(position_to_idx)
+    
+    '''
+    Example player data:
+    {
+        "age": 36,
+        "assist_percentage": 41.8,
+        "block_percentage": 1.5,
+        "box_plus_minus": 8.1,
+        "defensive_box_plus_minus": 2.3,
+        "defensive_rebound_percentage": 23.6,
+        "defensive_win_shares": 2.6,
+        "free_throw_attempt_rate": 0.31,
+        "games_played": 45,
+        "is_combined_totals": false,
+        "minutes_played": 1504,
+        "name": "LeBron James",
+        "offensive_box_plus_minus": 5.9,
+        "offensive_rebound_percentage": 2.2,
+        "offensive_win_shares": 3.0,
+        "player_efficiency_rating": 24.2,
+        "positions": [
+            "POINT GUARD"
+        ],
+        "slug": "jamesle01",
+        "steal_percentage": 1.6,
+        "team": "LOS ANGELES LAKERS",
+        "three_point_attempt_rate": 0.346,
+        "total_rebound_percentage": 12.9,
+        "true_shooting_percentage": 0.602,
+        "turnover_percentage": 15.2,
+        "usage_percentage": 31.9,
+        "value_over_replacement_player": 3.8,
+        "win_shares": 5.6,
+        "win_shares_per_48_minutes": 0.179
+    }
+    '''
 
     # Define the list of numeric features to use
     numeric_features = [
@@ -165,5 +201,15 @@ def prepare_data(data_dir = data_dir):
     )
     train_data, val_data, test_data = transform(data)
 
+    if save_data:
+        import pickle
+        
+        with open("data/graph_data.pkl", 'wb') as f:
+            pickle.dump({
+                'graph_data': {'train': train_data, 'val': val_data, 'test': test_data},
+                'mappings': {'player_to_node': player_to_node, 'slug_to_name': slug_to_name}
+            }, f)
 
     return train_data, val_data, test_data
+
+prepare_data(save_data=True)

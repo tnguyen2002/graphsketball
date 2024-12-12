@@ -129,3 +129,21 @@ def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualizati
     )
 
     fig.show()
+
+def get_data(include_mappings = False):
+    """Gets the saved graph data and mappings from the pickle file.
+
+    Returns: (default)
+        - train_data, val_data, test_data
+        
+    OR: (if include_mappings=True)
+        - Graph Data: {'train': train_data, 'val': val_data, 'test': test_data},
+        - Mappings: {'player_to_node': player_to_node, 'slug_to_name': slug_to_name} 
+    """
+    import pickle
+    with open("data/graph_data.pkl", 'rb') as f:
+        saved_data = pickle.load(f)
+        
+    if include_mappings:
+        return saved_data['graph_data'], saved_data['mappings']
+    return saved_data['graph_data']['train'], saved_data['graph_data']['val'], saved_data['graph_data']['test']
