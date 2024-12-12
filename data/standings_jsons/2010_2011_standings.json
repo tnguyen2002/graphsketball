@@ -1,0 +1,212 @@
+[
+    {
+        "conference": "EASTERN",
+        "division": "ATLANTIC",
+        "losses": 26,
+        "team": "BOSTON CELTICS",
+        "wins": 56
+    },
+    {
+        "conference": "EASTERN",
+        "division": "ATLANTIC",
+        "losses": 40,
+        "team": "NEW YORK KNICKS",
+        "wins": 42
+    },
+    {
+        "conference": "EASTERN",
+        "division": "ATLANTIC",
+        "losses": 41,
+        "team": "PHILADELPHIA 76ERS",
+        "wins": 41
+    },
+    {
+        "conference": "EASTERN",
+        "division": "ATLANTIC",
+        "losses": 58,
+        "team": "NEW JERSEY NETS",
+        "wins": 24
+    },
+    {
+        "conference": "EASTERN",
+        "division": "ATLANTIC",
+        "losses": 60,
+        "team": "TORONTO RAPTORS",
+        "wins": 22
+    },
+    {
+        "conference": "EASTERN",
+        "division": "CENTRAL",
+        "losses": 20,
+        "team": "CHICAGO BULLS",
+        "wins": 62
+    },
+    {
+        "conference": "EASTERN",
+        "division": "CENTRAL",
+        "losses": 45,
+        "team": "INDIANA PACERS",
+        "wins": 37
+    },
+    {
+        "conference": "EASTERN",
+        "division": "CENTRAL",
+        "losses": 47,
+        "team": "MILWAUKEE BUCKS",
+        "wins": 35
+    },
+    {
+        "conference": "EASTERN",
+        "division": "CENTRAL",
+        "losses": 52,
+        "team": "DETROIT PISTONS",
+        "wins": 30
+    },
+    {
+        "conference": "EASTERN",
+        "division": "CENTRAL",
+        "losses": 63,
+        "team": "CLEVELAND CAVALIERS",
+        "wins": 19
+    },
+    {
+        "conference": "EASTERN",
+        "division": "SOUTHEAST",
+        "losses": 24,
+        "team": "MIAMI HEAT",
+        "wins": 58
+    },
+    {
+        "conference": "EASTERN",
+        "division": "SOUTHEAST",
+        "losses": 30,
+        "team": "ORLANDO MAGIC",
+        "wins": 52
+    },
+    {
+        "conference": "EASTERN",
+        "division": "SOUTHEAST",
+        "losses": 38,
+        "team": "ATLANTA HAWKS",
+        "wins": 44
+    },
+    {
+        "conference": "EASTERN",
+        "division": "SOUTHEAST",
+        "losses": 48,
+        "team": "CHARLOTTE BOBCATS",
+        "wins": 34
+    },
+    {
+        "conference": "EASTERN",
+        "division": "SOUTHEAST",
+        "losses": 59,
+        "team": "WASHINGTON WIZARDS",
+        "wins": 23
+    },
+    {
+        "conference": "WESTERN",
+        "division": "NORTHWEST",
+        "losses": 27,
+        "team": "OKLAHOMA CITY THUNDER",
+        "wins": 55
+    },
+    {
+        "conference": "WESTERN",
+        "division": "NORTHWEST",
+        "losses": 32,
+        "team": "DENVER NUGGETS",
+        "wins": 50
+    },
+    {
+        "conference": "WESTERN",
+        "division": "NORTHWEST",
+        "losses": 34,
+        "team": "PORTLAND TRAIL BLAZERS",
+        "wins": 48
+    },
+    {
+        "conference": "WESTERN",
+        "division": "NORTHWEST",
+        "losses": 43,
+        "team": "UTAH JAZZ",
+        "wins": 39
+    },
+    {
+        "conference": "WESTERN",
+        "division": "NORTHWEST",
+        "losses": 65,
+        "team": "MINNESOTA TIMBERWOLVES",
+        "wins": 17
+    },
+    {
+        "conference": "WESTERN",
+        "division": "PACIFIC",
+        "losses": 25,
+        "team": "LOS ANGELES LAKERS",
+        "wins": 57
+    },
+    {
+        "conference": "WESTERN",
+        "division": "PACIFIC",
+        "losses": 42,
+        "team": "PHOENIX SUNS",
+        "wins": 40
+    },
+    {
+        "conference": "WESTERN",
+        "division": "PACIFIC",
+        "losses": 46,
+        "team": "GOLDEN STATE WARRIORS",
+        "wins": 36
+    },
+    {
+        "conference": "WESTERN",
+        "division": "PACIFIC",
+        "losses": 50,
+        "team": "LOS ANGELES CLIPPERS",
+        "wins": 32
+    },
+    {
+        "conference": "WESTERN",
+        "division": "PACIFIC",
+        "losses": 58,
+        "team": "SACRAMENTO KINGS",
+        "wins": 24
+    },
+    {
+        "conference": "WESTERN",
+        "division": "SOUTHWEST",
+        "losses": 21,
+        "team": "SAN ANTONIO SPURS",
+        "wins": 61
+    },
+    {
+        "conference": "WESTERN",
+        "division": "SOUTHWEST",
+        "losses": 25,
+        "team": "DALLAS MAVERICKS",
+        "wins": 57
+    },
+    {
+        "conference": "WESTERN",
+        "division": "SOUTHWEST",
+        "losses": 36,
+        "team": "NEW ORLEANS HORNETS",
+        "wins": 46
+    },
+    {
+        "conference": "WESTERN",
+        "division": "SOUTHWEST",
+        "losses": 36,
+        "team": "MEMPHIS GRIZZLIES",
+        "wins": 46
+    },
+    {
+        "conference": "WESTERN",
+        "division": "SOUTHWEST",
+        "losses": 39,
+        "team": "HOUSTON ROCKETS",
+        "wins": 43
+    }
+]
