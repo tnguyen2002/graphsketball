@@ -1,1 +1,2 @@
-data/graph_data.pkl
+__pycache__/
+*data/graph_data.pkl
