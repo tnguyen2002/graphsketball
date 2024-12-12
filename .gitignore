@@ -1,2 +1,7 @@
 __pycache__/
 *data/graph_data.pkl
+league_predictor_best_weights.pth
+league_predictor_weights.pth
+__pycache__/GNN.cpython-39.pyc
+data/league_graphs.pkl
+__pycache__/GNN.cpython-39.pyc
