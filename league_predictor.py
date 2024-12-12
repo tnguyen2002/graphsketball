@@ -1,112 +1,74 @@
 import torch
-from torch_geometric.nn import GCNConv, global_mean_pool
-from torch_geometric.data import DataLoader, Data
+from torch_geometric.data import Data
 import json
-import os
-import pickle
-import numpy as np
-from GNN import TeamWinPredictor
+import torch.nn.functional as F
+from LeagueModel import LeagueGNN
 import math
 
-# Define the model class
-# class TeamWinPredictor(torch.nn.Module):
-#     def __init__(self, in_channels, hidden_channels):
-#         super(TeamWinPredictor, self).__init__()
-#         self.conv1 = GCNConv(in_channels, hidden_channels)
-#         self.conv2 = GCNConv(hidden_channels, hidden_channels)
-#         self.fc = torch.nn.Linear(hidden_channels, 1)  # Output is a single scalar (win percentage)
 
-#     def forward(self, data):
-#         x, edge_index, batch = data.x, data.edge_index, data.batch
-
-#         # GCN layers
-#         x = self.conv1(x, edge_index)
-#         x = torch.relu(x)
-#         x = self.conv2(x, edge_index)
-#         x = torch.relu(x)
-
-#         # Global pooling
-#         x = global_mean_pool(x, batch)
-
-#         # Final linear layer
-#         x = self.fc(x)
-#         return torch.sigmoid(x).squeeze()  # Predict values between 0 and 1
-
-def load_player_data(file_path):
-    """Load player data from JSON and construct team subgraphs."""
+def load_season_data(file_path, numeric_features):
+    """Load player season data from JSON and create a single league graph."""
     with open(file_path, 'r') as f:
         season_data = json.load(f)
 
-    # Collect players, teams, and features
-    player_to_node = {}
-    team_graphs = []
     team_to_players = {}
     node_features = []
-
-    # Numeric features to use
-    numeric_features = [
-        "age", "assist_percentage", "block_percentage", "box_plus_minus",
-        "defensive_box_plus_minus", "defensive_rebound_percentage", "defensive_win_shares",
-        "free_throw_attempt_rate", "games_played", "minutes_played", "offensive_box_plus_minus",
-        "offensive_rebound_percentage", "offensive_win_shares", "player_efficiency_rating",
-        "steal_percentage", "three_point_attempt_rate", "total_rebound_percentage",
-        "true_shooting_percentage", "turnover_percentage", "usage_percentage",
-        "value_over_replacement_player", "win_shares", "win_shares_per_48_minutes",
-        "is_combined_totals"
-    ]
+    batch_list = []
+    edge_index = []
 
     for player_data in season_data:
-        player_slug = player_data['slug']
         team = player_data['team']
-
         if team not in team_to_players:
             team_to_players[team] = []
-        team_to_players[team].append(player_slug)
 
-        if player_slug not in player_to_node:
-            player_to_node[player_slug] = len(player_to_node)
-            features = [player_data.get(f, 0.0) for f in numeric_features]
-            node_features.append(features)
+        features = [player_data.get(f, 0.0) for f in numeric_features]
+        features_tensor = torch.tensor(features, dtype=torch.float)
+        team_to_players[team].append(features_tensor)
 
-    node_features = torch.tensor(node_features, dtype=torch.float)
+    team_start_idx = 0
+    labels = []
+    idx_to_team = {}
 
-    # Create subgraphs for each team
-    for team, player_slugs in team_to_players.items():
-        team_nodes = [player_to_node[slug] for slug in player_slugs]
-        team_node_features = node_features[team_nodes]
+    for team_idx, (team, players) in enumerate(team_to_players.items()):
+        idx_to_team[team_idx] = team
+        num_players = len(players)
+        team_node_features = torch.stack(players)
+        node_features.append(team_node_features)
 
-        # Create edges for fully connected team graph
-        edges = torch.combinations(torch.arange(len(team_nodes)), r=2, with_replacement=False).t()
+        # Fully connected team graph edges
+        team_edges = torch.combinations(
+            torch.arange(team_start_idx, team_start_idx + num_players),
+            r=2,
+            with_replacement=False
+        ).t()
+        edge_index.append(team_edges)
 
-        # Construct the graph
-        team_graphs.append(
-            Data(x=team_node_features, edge_index=edges)
-        )
+        batch_list.extend([team_idx] * num_players)
+        team_start_idx += num_players
 
-    return team_graphs, list(team_to_players.keys())
+    # Combine into a single graph
+    league_node_features = torch.cat(node_features, dim=0)
+    league_edge_index = torch.cat(edge_index, dim=1)
+    batch_tensor = torch.tensor(batch_list, dtype=torch.long)
+
+    return Data(x=league_node_features, edge_index=league_edge_index, batch=batch_tensor, teams=list(team_to_players.keys())), idx_to_team
 
 
-def predict_team_wins(file_path, model_path):
-    """Predict win/loss records for teams in the given season."""
-    # Load data and model
-    team_graphs, team_names = load_player_data(file_path)
-    with open("data/team_graphs.pkl", "rb") as f:
-        saved_data = pickle.load(f)
-        in_channels = saved_data['train'][0].x.size(1)
+def predict_team_wins(file_path, model_path, numeric_features):
+    """Predict win/loss records for a single season."""
+    # Load the league graph for the season
+    league_graph, idx_to_team = load_season_data(file_path, numeric_features)
 
-    model = TeamWinPredictor(in_channels=in_channels, hidden_channels=64)
+    # Load the trained model
+    in_channels = league_graph.x.size(1)
+    model = LeagueGNN(in_channels=in_channels, hidden_channels=64)
     model.load_state_dict(torch.load(model_path))
     model.eval()
 
-    # Create DataLoader for batch prediction
-    loader = DataLoader(team_graphs, batch_size=1, shuffle=False)
-
-    predictions = []
+    # Predict win percentages
     with torch.no_grad():
-        for data in loader:
-            win_percentage = model(data).item()
-            predictions.append(win_percentage)
-    
+        predictions = model(league_graph).squeeze().tolist()
+        
     S = sum(predictions)
     max_fraction = 73.0 / 82.0  # Upper bound fraction for realism
 
@@ -202,7 +164,7 @@ def predict_team_wins(file_path, model_path):
     wins = [int(round(p * 82)) for p in predictions]
     wins = [min(w, 73) for w in wins]  # Double-check capping
     win_loss_records = [(w, 82 - w) for w in wins]
-    print(sum(predictions))
+    print(predictions)
 
     # # Print team win/loss records
     # for team, record in zip(team_names, win_loss_records):
@@ -223,7 +185,7 @@ def predict_team_wins(file_path, model_path):
     ]
 
     # Pair teams with their win/loss records
-    team_records = {team: record for team, record in zip(team_names, win_loss_records)}
+    team_records = {team: record for team, record in zip([idx_to_team[idx] for idx in range(len(win_loss_records))], win_loss_records)}
 
     # Sort teams in each conference by wins (descending order)
     eastern_standings = sorted(
@@ -250,6 +212,17 @@ def predict_team_wins(file_path, model_path):
 
 
 if __name__ == "__main__":
-    file_path = "data/player_season_jsons/2021_2025_advanced_player_season_totals.json"  # Replace with your JSON file path
-    model_path = "team_win_predictor_weights.pth"
-    predict_team_wins(file_path, model_path)
+    numeric_features = [
+        "age", "assist_percentage", "block_percentage", "box_plus_minus",
+        "defensive_box_plus_minus", "defensive_rebound_percentage", "defensive_win_shares",
+        "free_throw_attempt_rate", "games_played", "minutes_played", "offensive_box_plus_minus",
+        "offensive_rebound_percentage", "offensive_win_shares", "player_efficiency_rating",
+        "steal_percentage", "three_point_attempt_rate", "total_rebound_percentage",
+        "true_shooting_percentage", "turnover_percentage", "usage_percentage",
+        "value_over_replacement_player", "win_shares", "win_shares_per_48_minutes",
+        "is_combined_totals"
+    ]
+
+    file_path = "data/player_season_jsons/2024_2025_advanced_player_season_totals.json"  # Replace with your JSON file path
+    model_path = "league_predictor_best_weights.pth"
+    predict_team_wins(file_path, model_path, numeric_features)
