@@ -1,4 +1,6 @@
 # Graphsketball: Predicting NBA Player Chemistry with Graph Neural Networks (GNNs)
+By Josh Francis and Tom Nguyen 
+
 
 Graphsketball is an innovative project that applies Graph Neural Networks (GNNs) to uncover insights into NBA player relationships, team dynamics, and trade optimization. By leveraging cutting-edge machine learning, Graphsketball bridges the gap between analytics and the intangibles of player synergy, providing data-driven solutions for team performance enhancement.
 
