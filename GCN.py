@@ -8,6 +8,7 @@ from torch_geometric.nn import GCNConv, BatchNorm, LayerNorm
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score, average_precision_score
 from utils import visualize_graph, get_data
+import matplotlib.pyplot as plt
 
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, dropout = 0.5, num_layers=1):
@@ -39,10 +40,8 @@ class Net(torch.nn.Module):
         return z
 
     def decode(self, z, edge_index):
-        # Compute dot product between node embeddings
         return (z[edge_index[0]] * z[edge_index[1]]).sum(dim=1)
 
-# Training and evaluation functions
 def train(model, optimizer, train_data, scheduler=None):
     model.train()
     optimizer.zero_grad()
@@ -71,7 +70,6 @@ def test(model, data):
     logits = model.decode(z, edge_index).cpu()
     labels = labels.cpu()
 
-    # Compute mean squared error as metric for edge weight prediction
     mse = F.mse_loss(logits, labels)
 
     return mse.item()
@@ -80,34 +78,10 @@ data_dir = 'data/player_season_jsons/'  # Adjust the path accordingly
 
 train_data, val_data, test_data = get_data()
 
-# Initialize the model, optimizer
 model = Net(in_channels=train_data.num_features, out_channels=128, dropout=0.5).to(train_data.x.device)
-# optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
 optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.75, patience=5)
 
-
-# # Training loop
-# num_epochs = 3000
-# best_val_mse = float('inf')
-
-# for epoch in range(1, num_epochs + 1):
-#     loss = train(model, optimizer, train_data)s
-    
-#     if epoch % 10 == 0:
-#         val_mse = test(model, val_data)
-#         test_mse = test(model, test_data)
-#         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, '
-#               f'Val MSE: {val_mse:.4f}, Test MSE: {test_mse:.4f}')
-        
-#         # Optionally, save the best model based on validation MSE
-#         if val_mse < best_val_mse:
-#             best_val_mse = val_mse
-#             torch.save(model.state_dict(), 'best_model.pth')
-
-# print(f'Best Val MSE: {best_val_mse:.4f}')
-
-import matplotlib.pyplot as plt
 
 # Initialize lists to store training loss, validation MSE, and test MSE over epochs
 train_loss_history = []
@@ -149,16 +123,3 @@ plt.yscale('log')
 plt.title('Validation and Test MSE over Epochs')
 plt.legend()
 plt.show()
-
-# import pickle
-
-# # Save the trained model
-# torch.save(model.state_dict(), 'best_model.pth')
-
-# # Save the mappings and node features
-# with open('data_mappings.pkl', 'wb') as f:
-#     pickle.dump({
-#         'player_to_node': player_to_node,
-#         'slug_to_name': slug_to_name,
-#         'node_features': node_features,
-#     }, f)

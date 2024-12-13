@@ -2,9 +2,9 @@ import networkx as nx
 import plotly.graph_objects as go
 import numpy as np
 
-def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualization", max_nodes=25, color_by=None):
+def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualization", max_nodes=600, color_by=None):
     """
-    Visualize the graph using Plotly for interactivity, with edge weights displayed as labels.
+    Visualize the graph using Plotly for interactivity.
 
     Args:
         data (torch_geometric.data.Data): The graph data object.
@@ -35,20 +35,11 @@ def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualizati
     # Extract edge coordinates
     edge_x = []
     edge_y = []
-    edge_labels_x = []
-    edge_labels_y = []
-    edge_text = []
     for edge in G.edges(data=True):
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
-
-        # Position the weight label at the center of the edge
-        edge_labels_x.append((x0 + x1) / 2)
-        edge_labels_y.append((y0 + y1) / 2)
-        weight = edge[2]['weight']
-        edge_text.append(f"{weight:.2f}")
 
     # Plot edges without hover text for cleaner display
     edge_trace = go.Scatter(
@@ -57,17 +48,6 @@ def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualizati
         line=dict(width=0.5, color='#888'),
         hoverinfo='none',
         mode='lines'
-    )
-
-    # Plot edge labels as separate trace
-    edge_labels_trace = go.Scatter(
-        x=edge_labels_x,
-        y=edge_labels_y,
-        mode='text',
-        text=edge_text,
-        textposition='middle center',
-        hoverinfo='none',
-        textfont=dict(color='blue')
     )
 
     # Plot nodes with player names
@@ -114,9 +94,9 @@ def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualizati
         hoverinfo='text'
     )
 
-    # Create the Plotly figure with edge labels trace
+    # Create the Plotly figure without edge labels
     fig = go.Figure(
-        data=[edge_trace, edge_labels_trace, node_trace],
+        data=[edge_trace, node_trace],
         layout=go.Layout(
             title=title,
             titlefont_size=16,
@@ -129,21 +109,3 @@ def visualize_graph(data, player_to_node, slug_to_name, title="Graph Visualizati
     )
 
     fig.show()
-
-def get_data(include_mappings = False):
-    """Gets the saved graph data and mappings from the pickle file.
-
-    Returns: (default)
-        - train_data, val_data, test_data
-        
-    OR: (if include_mappings=True)
-        - Graph Data: {'train': train_data, 'val': val_data, 'test': test_data},
-        - Mappings: {'player_to_node': player_to_node, 'slug_to_name': slug_to_name} 
-    """
-    import pickle
-    with open("data/graph_data.pkl", 'rb') as f:
-        saved_data = pickle.load(f)
-        
-    if include_mappings:
-        return saved_data['graph_data'], saved_data['mappings']
-    return saved_data['graph_data']['train'], saved_data['graph_data']['val'], saved_data['graph_data']['test']

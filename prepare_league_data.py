@@ -2,6 +2,7 @@ import json
 import os
 import torch
 from torch_geometric.data import Data
+import pickle
 
 # Directories containing JSON files
 player_data_dir = 'data/player_season_jsons/'
@@ -95,7 +96,6 @@ def prepare_league_graphs(player_data_dir=player_data_dir, standings_data_dir=st
     test_data = league_graphs[train_size + val_size:]
 
     if save_data:
-        import pickle
         with open("data/league_graphs.pkl", 'wb') as f:
             pickle.dump({'train': train_data, 'val': val_data, 'test': test_data}, f)
 

@@ -118,7 +118,6 @@ def predict(model, data):
 
 def print_standings(predictions, teams_in_order):
     """Print nicely formatted standings from predictions."""
-    # This code is adapted from your snippet. We remove hard-coded 30 teams logic and adapt it.
     num_teams = len(teams_in_order)
     target_sum = num_teams * 0.5  # We want average ~0.5 win fraction
 
@@ -126,7 +125,6 @@ def print_standings(predictions, teams_in_order):
     max_fraction = 73.0 / 82.0  # Upper bound fraction for realism
 
     if math.isclose(S, 0.0, rel_tol=1e-9):
-        # If all predictions are zero, just evenly distribute
         predictions = [0.5]*num_teams
     else:
         p_min = min(predictions)
@@ -135,23 +133,12 @@ def print_standings(predictions, teams_in_order):
         if math.isclose(p_min, p_max, rel_tol=1e-9):
             predictions = [0.5]*num_teams
         else:
-            # Attempt similar linear transform: a*p + b
-            # We want sum(a*p_i + b) = target_sum
-            # a*S + num_teams*b = target_sum
-            # b = (target_sum - a*S)/num_teams
-            #
-            # Constraints: 0 <= a*p_min + b <= max_fraction and same for p_max
-            # Solve for feasible a similarly to original code:
-
             denom_min = p_min - (S/num_teams)
             denom_max = p_max - (S/num_teams)
 
             a_lower_bound = -math.inf
             a_upper_bound = math.inf
 
-            # Min bound: a*p_min + b >= 0
-            # a*(p_min - S/num_teams) >= -target_sum/num_teams
-            # => a*denom_min >= -(target_sum/num_teams)
             min_rhs = -(target_sum/num_teams)
             if not math.isclose(denom_min, 0, rel_tol=1e-12):
                 required_a = min_rhs/denom_min
@@ -160,8 +147,6 @@ def print_standings(predictions, teams_in_order):
                 else:
                     a_upper_bound = min(a_upper_bound, required_a)
 
-            # Max bound: a*p_max + b <= max_fraction
-            # a*(p_max - S/num_teams) <= max_fraction - target_sum/num_teams
             max_rhs = max_fraction - (target_sum/num_teams)
             if not math.isclose(denom_max, 0, rel_tol=1e-12):
                 required_a = max_rhs/denom_max
@@ -170,15 +155,12 @@ def print_standings(predictions, teams_in_order):
                 else:
                     a_lower_bound = max(a_lower_bound, required_a)
 
-            # Check feasibility
             if a_lower_bound > a_upper_bound:
                 # No feasible solution
-                # Fallback: just scale to sum=target_sum and then clip
                 a = target_sum/S
                 b = 0.0
                 adjusted = [min(max(a*p+b, 0.0), max_fraction) for p in predictions]
             else:
-                # Choose a in feasible range. Try a = target_sum/S if possible.
                 a_candidate = target_sum/S
                 if a_candidate < a_lower_bound:
                     a = a_lower_bound
@@ -189,16 +171,13 @@ def print_standings(predictions, teams_in_order):
 
                 b = (target_sum - a*S)/num_teams
                 adjusted = [a*p+b for p in predictions]
-                # Clip to ensure 0..max_fraction
                 adjusted = [min(max(x, 0.0), max_fraction) for x in adjusted]
             predictions = adjusted
 
-    # Convert fractions to win/loss records
     wins = [int(round(p * 82)) for p in predictions]
-    wins = [min(w, 73) for w in wins]  # Just ensure no team exceeds 73 wins
+    wins = [min(w, 73) for w in wins]
     team_records = {team: (w, 82-w) for team, w in zip(teams_in_order, wins)}
 
-    # Sort each conference
     eastern_standings = sorted(
         [(team, team_records[team]) for team in eastern_conference if team in team_records],
         key=lambda x: x[1][0],
@@ -221,29 +200,50 @@ def print_standings(predictions, teams_in_order):
         print(f"{rank:2}. {team:25} {record[0]:2}-{record[1]:2}")
 
 
-def rebuild_graph_with_player_moved(original_season_data, standings_data, player_name, new_team):
-    """Rebuild the graph after moving a given player to a new team (and removing from old team)."""
-    # We will copy the original season_data to avoid permanent modifications
+def rebuild_graph_with_swap(original_season_data, standings_data, player_out_name, player_in_name):
+    """
+    Rebuild the graph after swapping two players:
+    player_out_name: The player currently on target_team who will be swapped out.
+    player_in_name: The player from another team who will be swapped in.
+
+    Steps:
+    - Find both players in the season_data.
+    - Swap their teams: player_out goes to player_in's old team, player_in goes to player_out's old team.
+    """
     modified_data = deepcopy(original_season_data)
 
-    # Find the player and change their team
-    player_found = False
+    player_out_team = None
+    player_in_team = None
     for p in modified_data:
-        if p['name'] == player_name:
-            p['team'] = new_team
-            player_found = True
-            break
+        if p['name'] == player_out_name:
+            player_out_team = p['team']
+        if p['name'] == player_in_name:
+            player_in_team = p['team']
 
-    if not player_found:
-        raise ValueError(f"Player {player_name} not found in season data.")
+    if player_out_team is None:
+        raise ValueError(f"Player {player_out_name} not found.")
+    if player_in_team is None:
+        raise ValueError(f"Player {player_in_name} not found.")
 
-    # Now build a new graph from modified_data
+    # Perform the swap
+    player_out_found = False
+    player_in_found = False
+    for p in modified_data:
+        if p['name'] == player_out_name:
+            p['team'] = player_in_team
+            player_out_found = True
+        elif p['name'] == player_in_name:
+            p['team'] = player_out_team
+            player_in_found = True
+
+    if not player_out_found or not player_in_found:
+        raise ValueError("Could not perform swap, player not found in data.")
+
     data, teams_in_order, _ = build_graph_from_season_data(modified_data, standings_data)
     return data, teams_in_order
 
 
 def main():
-    # Specify which season to load
     season = "2024_2025"  # Example
     player_file = f"data/player_season_jsons/{season}_advanced_player_season_totals.json"
     standings_file = f"data/standings_jsons/{season}_standings.json"
@@ -256,55 +256,76 @@ def main():
     model.load_state_dict(torch.load('league_predictor_best_weights.pth', map_location=torch.device('cpu')))
     model.eval()
 
-    # Baseline predictions
+    # Baseline predictions for all teams
     baseline_predictions = predict(model, original_data)
+    baseline_team_preds = {team: baseline_predictions[i] for i, team in enumerate(teams_in_order)}
+
     print("Baseline Standings:")
     print_standings(baseline_predictions, teams_in_order)
     print()
 
-    # Target scenario: Adding players to the Warriors
     target_team = "GOLDEN STATE WARRIORS"
-    baseline_warriors_prediction = baseline_predictions[teams_in_order.index(target_team)]
+    baseline_warriors_prediction = baseline_team_preds[target_team]
 
-    # Gather candidates (player name, features, and original team)
-    candidates = []
-    for player_data in original_season_data:
-        if player_data['team'] == target_team:
-            continue
-        features = [player_data.get(f, 0.0) for f in numeric_features]
-        features_tensor = torch.tensor(features, dtype=torch.float)
-        player_name = player_data['name']
-        original_team = player_data['team']
-        candidates.append((player_name, features_tensor, original_team))
-
-    improvements = []
-    # Evaluate each candidate
-    for player_name, feat, old_team in candidates:
-        # Move player from old_team to Warriors
-        modified_data, modified_teams_in_order = rebuild_graph_with_player_moved(original_season_data, standings_data, player_name, target_team)
-
-        # Predictions for modified scenario
-        new_predictions = predict(model, modified_data)
-        if target_team in modified_teams_in_order:
-            new_warriors_prediction = new_predictions[modified_teams_in_order.index(target_team)]
-            improvement = new_warriors_prediction - baseline_warriors_prediction
-            improvements.append((player_name, old_team, improvement, new_predictions, modified_teams_in_order))
+    # Identify Warriors players and non-Warriors players
+    # We'll use the original_season_data to know which players are on the Warriors
+    warriors_players = []
+    other_players = []
+    for p in original_season_data:
+        if p['team'] == target_team:
+            warriors_players.append((p['name'], p['team']))
         else:
-            # If target team somehow is missing, skip
-            continue
+            other_players.append((p['name'], p['team']))
 
-    # Sort by improvement descending
-    improvements.sort(key=lambda x: x[2], reverse=True)
+    # We want trades that are win-win:
+    # Conditions:
+    #   new_warriors_pred - baseline_warriors_pred > 0
+    #   new_other_team_pred - baseline_other_team_pred > 0
+    #   (new_other_team_pred - baseline_other_team_pred) < (new_warriors_pred - baseline_warriors_pred)
 
-    # Get top k players
+    results = []
+    for w_player, w_team in warriors_players:
+        for o_player, o_team in other_players:
+            # Skip if either player is missing baseline predictions for their teams
+            if w_team not in baseline_team_preds or o_team not in baseline_team_preds:
+                continue
+
+            baseline_other_team_pred = baseline_team_preds[o_team]
+
+            # Perform the swap
+            # w_player (from Warriors) <-> o_player (from o_team)
+            # After swap: w_player -> o_team, o_player -> Warriors
+            swapped_data, swapped_teams_in_order = rebuild_graph_with_swap(original_season_data, standings_data, w_player, o_player)
+            swapped_preds = predict(model, swapped_data)
+            swapped_team_preds = {team: swapped_preds[i] for i, team in enumerate(swapped_teams_in_order)}
+
+            # Check if target team and other team are in swapped scenario
+            if target_team not in swapped_team_preds or o_team not in swapped_team_preds:
+                # One of the teams disappeared somehow
+                continue
+
+            new_warriors_pred = swapped_team_preds[target_team]
+            new_other_team_pred = swapped_team_preds[o_team]
+
+            w_imp = new_warriors_pred - baseline_warriors_prediction
+            o_imp = new_other_team_pred - baseline_other_team_pred
+
+            if w_imp > 0 and o_imp > 0 and o_imp < w_imp:
+                # A valid win-win trade favoring Warriors
+                results.append((w_player, o_player, w_imp, o_imp, swapped_preds, swapped_teams_in_order, o_team))
+
+    # Sort by Warriors improvement descending
+    results.sort(key=lambda x: x[2], reverse=True)
+
     k = 10
-    top_k = improvements[:k]
+    top_k = results[:k]
 
-    print("Top k players who improve the Warriors the most:")
-    for player_name, old_team, imp, preds, t_in_order in top_k:
-        print(f"{player_name} (from {old_team}): +{imp:.4f} improvement in predicted win%")
-        # Print standings for this scenario
-        print(f"\nStandings after adding {player_name} to the Warriors and removing from {old_team}:")
+    print(f"Top {k} Win-Win Trades (Favoring the Warriors):")
+    for i, (w_player, o_player, w_imp, o_imp, preds, t_in_order, o_team) in enumerate(top_k, start=1):
+        print(f"{i}. Swap {w_player} (GSW) with {o_player} ({o_team})")
+        print(f"   Warriors improvement: {w_imp:.4f}")
+        print(f"   {o_team} improvement: {o_imp:.4f}")
+        print("\nStandings after this trade:")
         print_standings(preds, t_in_order)
         print("\n" + "="*60 + "\n")
 
