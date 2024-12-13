@@ -1,6 +1,7 @@
 import torch
 from torch_geometric.nn import GCNConv, global_mean_pool, LayerNorm, BatchNorm
 from torch_geometric.loader import DataLoader
+from torch.distributions import Normal
 import pickle
 import copy
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ class TeamGNN(torch.nn.Module):
         x = self.norm2(x)
         x = self.relu1(x)
         
-        #x = self.dropout(x)
+        x = self.dropout(x)
         
         x = self.pool(x, batch)
 
@@ -60,13 +61,78 @@ class LeagueGNN(torch.nn.Module):
         x = self.league_conv1(team_embeddings, league_edge_index)
         x = self.norm1(x)
         x = self.relu1(x)
-        x = self.league_conv2(x, league_edge_index)
-        x = self.norm2(x)
-        x = self.relu1(x)
+        # x = self.league_conv2(x, league_edge_index)
+        # x = self.norm2(x)
+        # x = self.relu1(x)
         x = x + x_initial
-        #x = self.dropout(x)
+        x = self.dropout(x)
         predictions = self.fc(x).squeeze(-1)
         return predictions # torch.softmax(x, dim=1)
+
+def pairwise_ranking_loss(predictions, true_scores):
+    """
+    Computes pairwise ranking loss.
+
+    predictions: Tensor of predicted scores (batch_size, num_teams)
+    true_scores: Tensor of ground truth scores (batch_size, num_teams)
+    """
+    # Generate all pairs (i, j)
+    pair_indices = torch.combinations(torch.arange(predictions.size()[0]), r=2, with_replacement=False)
+    i_indices, j_indices = pair_indices[:, 0], pair_indices[:, 1]
+
+    # Get predictions and true scores for pairs
+    pred_diff = predictions[i_indices] - predictions[j_indices]
+    true_diff = true_scores[i_indices] - true_scores[j_indices]
+    
+    # Filter for pairs where true_diff > 0 (i ranked above j)
+    valid_pairs = true_diff > 0
+    pred_diff = pred_diff[valid_pairs]
+    
+    # Compute pairwise ranking loss
+    loss = -torch.log(torch.sigmoid(pred_diff)).mean() if pred_diff.numel() > 0 else 0
+    
+    return loss
+
+def distribution_loss(predictions, target_mean=0.5, target_std=0.1):
+    """
+    Computes a KL-divergence loss between the predicted scores and a target normal distribution.
+
+    predictions: Tensor of predicted scores (batch_size, num_teams)
+    target_mean: Mean of the target distribution (e.g., 0.5 for win rates)
+    target_std: Standard deviation of the target distribution (e.g., 0.1 for win rates)
+    """
+    # Normalize predictions to sum to 1 (like probabilities)
+    pred_probs = torch.softmax(predictions, dim=-1)
+
+    # Target normal distribution
+    target_dist = Normal(loc=target_mean, scale=target_std)
+    
+    # Sample points to approximate target probabilities
+    target_probs = target_dist.log_prob(predictions)
+    target_probs = torch.exp(target_probs)  # Convert log-probs to probs
+
+    # Compute KL divergence
+    kl_div = torch.sum(pred_probs * (torch.log(pred_probs + 1e-9) - torch.log(target_probs + 1e-9)), dim=-1)
+    return kl_div.mean()
+
+def hybrid_loss(predictions, true_scores, target_mean=0.5, target_std=0.15, lambda_=0.1):
+    """
+    Combines pairwise ranking loss with distribution regularization loss.
+
+    predictions: Tensor of predicted scores (batch_size, num_teams)
+    true_scores: Tensor of ground truth scores (batch_size, num_teams)
+    target_mean: Mean of the target distribution (e.g., 0.5 for win rates)
+    target_std: Standard deviation of the target distribution (e.g., 0.1 for win rates)
+    lambda_: Weighting factor for the distribution loss
+    """
+    # Compute pairwise ranking loss
+    ranking_loss = pairwise_ranking_loss(predictions, true_scores)
+    
+    # Compute distribution regularization loss
+    dist_loss = distribution_loss(predictions, target_mean, target_std)
+
+    # Combine losses
+    return ranking_loss + lambda_ * dist_loss
 
 
 def train_model():
@@ -82,14 +148,14 @@ def train_model():
     model = LeagueGNN(in_channels=train_data[0].x.size(1), hidden_channels=64)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, min_lr=0.0001)
-    criterion = torch.nn.MSELoss()
+    criterion = hybrid_loss # torch.nn.MSELoss()
 
     best_model_weights = copy.deepcopy(model.state_dict())
     best_val_loss = float('inf')
 
     train_losses = []
     val_losses = []
-    max_epochs = 300
+    max_epochs = 500
 
     for epoch in range(max_epochs):
         # Training phase
@@ -98,8 +164,8 @@ def train_model():
         for data in train_data:
             optimizer.zero_grad()
             predictions = model(data)
-
             loss = criterion(predictions, data.y)
+            #print(loss)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
@@ -110,9 +176,11 @@ def train_model():
         model.eval()
         val_loss = 0
         with torch.no_grad():
-            for data in val_loader:
+            for data in val_data:
                 predictions = model(data)
+                #print(predictions, data.y)
                 loss = criterion(predictions, data.y)
+                #print("VAL LOSS",  loss)
                 val_loss += loss.item()
         avg_val_loss = val_loss / len(val_loader)
         val_losses.append(avg_val_loss)
