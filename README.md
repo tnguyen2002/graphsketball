@@ -39,16 +39,6 @@ Graphsketball employs a hierarchical GNN model:
    - Combines hierarchical modeling to analyze inter-team dynamics.
    - Loss functions include Pairwise Ranking Loss and KL-Divergence-based Distribution Loss.
 
-## ⚙️ Implementation Details
-
-- **Frameworks**: Built using PyTorch and PyTorch Geometric.
-- **Data Pipeline**:
-  - Player-level JSON parsing and graph creation.
-  - Training, validation, and testing splits for seasonal data.
-- **Model Training**:
-  - 300+ epochs using hybrid loss functions for robust predictions.
-  - Incorporates GCNConv layers, global pooling, and normalization techniques.
-
 ## 🔑 Key Insights and Results
 
 ### Team Win Percentage Predictions
