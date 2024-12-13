@@ -37,7 +37,7 @@ class TeamGNN(torch.nn.Module):
 
 
 class LeagueGNN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, num_teams=30):
+    def __init__(self, in_channels, hidden_channels):
         super(LeagueGNN, self).__init__()
         self.team_gnn = TeamGNN(in_channels, hidden_channels)
         self.norm1 = LayerNorm(hidden_channels)
